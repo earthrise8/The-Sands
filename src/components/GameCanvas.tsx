@@ -340,7 +340,7 @@ export default function GameCanvas({
   
       // Reset AI Fremens
       s.aiFremens = [];
-      if (gameMode === GameMode.WORM_SOLO) {
+      if (gameMode === GameMode.WORM_SOLO || (gameMode === GameMode.LOCAL_VS && duelType === DuelType.WORM_VS_WORM)) {
         // Spawn 3 AI harvesters
         for (let i = 0; i < 3; i++) {
           spawnAIFremen(i);
@@ -716,8 +716,8 @@ export default function GameCanvas({
       // 7. HANDLE PLAYER CONTROLS (FREMEN)
       updatePlayerFremen();
 
-      // 8. HANDLE AI FREMENS (For Worm Solo mode)
-      if (gameMode === GameMode.WORM_SOLO) {
+      // 8. HANDLE AI FREMENS (For Worm Solo and Worm-vs-Worm race modes)
+      if (gameMode === GameMode.WORM_SOLO || (gameMode === GameMode.LOCAL_VS && duelType === DuelType.WORM_VS_WORM)) {
         updateAIFremens();
       }
 
