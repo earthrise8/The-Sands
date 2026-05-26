@@ -156,11 +156,11 @@ export default function GameControls({
           <div className="grid grid-cols-2 gap-2 border-b border-orange-950/20 pb-2.5">
             <div className="bg-stone-950/50 p-2 rounded border border-orange-950/10">
               <span className="block text-[8px] uppercase font-mono tracking-wider text-stone-500">Global Yield</span>
-              <span className="text-sm font-bold text-amber-400 font-mono">{score * 10} mg</span>
+              <span className="text-sm font-bold text-amber-400 font-mono">{score * 10} kg</span>
             </div>
             <div className="bg-stone-950/50 p-2 rounded border border-orange-950/10">
               <span className="block text-[8px] uppercase font-mono tracking-wider text-stone-500">Best Yield</span>
-              <span className="text-sm font-bold text-stone-300 font-mono">{highScore * 10} mg</span>
+              <span className="text-sm font-bold text-stone-300 font-mono">{highScore * 10} kg</span>
             </div>
           </div>
 
