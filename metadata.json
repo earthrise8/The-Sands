@@ -1,0 +1,6 @@
+{
+  "name": "Sandworm vs Fremen",
+  "description": "An interactive Dune-themed tactical arcade game in the sands of Arrakis. Run as a Fremen harvesting spice with thumpers, or hunt as the massive Shai-Hulud in shared-screen local VS or Solo modes.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
