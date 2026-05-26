@@ -168,7 +168,7 @@ export default function App() {
             <div className="text-center">
               <p className="text-[9px] uppercase tracking-widest text-amber-500/70 mb-0.5">CURRENT YIELD</p>
               <p className="text-lg md:text-xl font-mono text-cyan-400 font-bold">
-                {spiceCoins * 10} <span className="text-[10px] text-cyan-400/70">mg/c</span>
+                {spiceCoins * 10} <span className="text-[10px] text-cyan-400/70">kg/c</span>
               </p>
             </div>
             <div className="text-center hidden sm:block">
@@ -365,7 +365,7 @@ export default function App() {
                 
                 <div className="flex items-center gap-2 text-stone-400">
                   <Trophy className="w-4 h-4 text-amber-500" />
-                  <span>Sietch High Yield Record: <strong className="text-amber-400 font-mono text-sm">{highScore * 10} mg</strong></span>
+                  <span>Sietch High Yield Record: <strong className="text-amber-400 font-mono text-sm">{highScore * 10} kg</strong></span>
                 </div>
 
                 <button

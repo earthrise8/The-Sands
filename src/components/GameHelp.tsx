@@ -101,7 +101,7 @@ export default function GameHelp({ onSetGameState }: GameHelpProps) {
                   <Activity className="w-3 h-3" />
                   Underground Dive (F / Shift):
                 </span>
-                <p>Submerge below the deep sands. Dives consume energy but grant 1.5x speed and make you completely immune to rocky Sietch peaks. Use on final approach or to catch a particularily sneaky fremen.</p>
+                <p>Submerge below the deep sands. Dives consume energy but grant 1.5x speed and make you completely immune to rocky Sietch peaks. Use on final approach or to catch a particularly sneaky Fremen.</p>
               </div>
 
               <div className="flex flex-col gap-0.5">
@@ -122,7 +122,7 @@ export default function GameHelp({ onSetGameState }: GameHelpProps) {
                 <span className="text-red-500 font-mono text-[10px] uppercase font-bold">
                   Sound tracker:
                 </span>
-                <p>Look out for circular expand ripples. These show the distance and coordinates of noisy Fremen harvesters or active thumpers.</p>
+                <p>Look out for circular expanding ripples. These show the distance and coordinates of noisy Fremen harvesters or active thumpers.</p>
               </div>
             </div>
           </div>

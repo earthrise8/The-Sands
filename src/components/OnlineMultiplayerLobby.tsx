@@ -249,7 +249,7 @@ export default function OnlineMultiplayerLobby({
           {/* User profile callsign choice card */}
           <div className="flex flex-col gap-2 p-4 bg-stone-950/30 border border-stone-850 rounded-lg">
             <label className="text-[10px] uppercase font-mono tracking-widest text-[#ea580c] font-bold">
-              Operator callsigN (Your Username):
+              Operator callsign (Your Username):
             </label>
             <input
               type="text"

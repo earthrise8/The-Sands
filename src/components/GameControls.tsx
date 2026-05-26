@@ -308,7 +308,7 @@ export default function GameControls({
           <span className="font-bold text-amber-600">QUICK TACTICS:</span>
           {gameMode !== GameMode.WORM_SOLO && (
             <>
-              <div>• <span className="text-stone-400">Sietch Rocks (Brown)</span>: Safe for Fremen. Worm crashes or crawls over but slow.</div>
+              <div>• <span className="text-stone-400">Sietch Rocks (Brown)</span>: Safe for Fremen. Worm will crash or slowly crawl under.</div>
               <div>• <span className="text-stone-400">Rhythm Walk (holding keys)</span>: Double speed, but triggers worm speed up!</div>
             </>
           )}

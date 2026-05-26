@@ -1902,7 +1902,7 @@ export default function GameCanvas({
         ctx.fillStyle = '#f59e0b';
         ctx.font = 'bold 10px monospace';
         ctx.textAlign = 'left';
-        ctx.fillText(`CARRIED: ${s.fremen.spiceCarried} mg`, 20, 28);
+        ctx.fillText(`CARRIED: ${s.fremen.spiceCarried} kg`, 20, 28);
         
         // Blink a neat return arrow
         if (s.timeStep % 30 < 15) {
