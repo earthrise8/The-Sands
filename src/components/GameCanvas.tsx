@@ -95,6 +95,8 @@ export default function GameCanvas({
   multiplayerRoomId
 }: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const isWormVsWormMatch = (gameMode === GameMode.LOCAL_VS && duelType === DuelType.WORM_VS_WORM) ||
+                            (gameMode === GameMode.ONLINE_MULTIPLAYER && duelType === DuelType.WORM_VS_WORM);
 
   // Core Game Entity States held inside Refs for real-time physics consistency
   const stateRef = useRef({
@@ -169,6 +171,9 @@ export default function GameCanvas({
       diveEnergy: 100,
       isFrenzied: false,
       frenzyTime: 0
+      ,
+      // track spice eaten by this worm (for Worm vs Worm scoring)
+      spiceEaten: 0
     },
 
     // Secondary Worm player (for Worm vs Worm modes)
@@ -188,6 +193,9 @@ export default function GameCanvas({
       diveEnergy: 100,
       isFrenzied: false,
       frenzyTime: 0
+      ,
+      // track spice eaten by worm2 (for Worm vs Worm scoring)
+      spiceEaten: 0
     },
 
     // Dynamic environmental systems
@@ -264,6 +272,7 @@ export default function GameCanvas({
         s.homeBase = ROCKY_SIETCHES[idx];
       }
       
+      
       // Position Fremen nicely in a left-center valley (or respawn at base if base is defined!)
       s.fremen = {
         x: s.homeBase ? s.homeBase.x : 5,
@@ -282,6 +291,9 @@ export default function GameCanvas({
         direction: 'NONE',
         invulnerableTime: 0
       };
+      // Reset per-worm spice counters at level start
+      s.worm.spiceEaten = 0;
+      s.worm2.spiceEaten = 0;
 
       s.fremen2 = {
         x: s.homeBase ? s.homeBase.x : 7,
@@ -318,6 +330,8 @@ export default function GameCanvas({
         diveEnergy: 100,
         isFrenzied: false,
         frenzyTime: 0
+        ,
+        spiceEaten: 0
       };
   
       // Spawn initial Spice Blow components (preventing spawning inside rock)
@@ -595,7 +609,7 @@ export default function GameCanvas({
 
     const handleTimeOut = () => {
       audioController.playDeath();
-      
+
       const isFremenVsFremen = (gameMode === GameMode.LOCAL_VS && duelType === DuelType.FREMEN_VS_FREMEN) ||
                                (gameMode === GameMode.ONLINE_MULTIPLAYER && duelType === DuelType.FREMEN_VS_FREMEN);
       const isWormVsWorm = (gameMode === GameMode.LOCAL_VS && duelType === DuelType.WORM_VS_WORM) ||
@@ -612,7 +626,10 @@ export default function GameCanvas({
           winner = 'worm';
         }
       } else if (isWormVsWorm) {
-        if (s.worm.segments.length >= s.worm2.segments.length) {
+        // Decide Worm-vs-Worm winner by spice collected (including bonuses for eating Fremens)
+        const worm1Spice = s.worm.spiceEaten || 0;
+        const worm2Spice = s.worm2.spiceEaten || 0;
+        if (worm1Spice >= worm2Spice) {
           onSetGameState(GameState.GAME_OVER_WORM_WON);
           winner = 'worm';
         } else {
@@ -1198,9 +1215,91 @@ export default function GameCanvas({
           // Growth element!
           s.worm.segments.push({ ...s.worm.segments[s.worm.segments.length - 1] });
           addParticles(newHeadX, newHeadY, '#f59e0b', 14);
+          // Track spice eaten by this worm (used for Worm vs Worm scoring)
+          if (typeof s.worm.spiceEaten === 'number') {
+            s.worm.spiceEaten += gathered.amount;
+          } else {
+            s.worm.spiceEaten = gathered.amount;
+          }
           
           if (gameMode === GameMode.WORM_SOLO) {
             onSetScore(prev => prev + gathered.amount * 10);
+          }
+        }
+      }
+
+      // If this is a Worm vs Worm local match, also update the second worm (purple) from arrow keys
+      const isWormVsWormLocal = (gameMode === GameMode.LOCAL_VS && duelType === DuelType.WORM_VS_WORM) ||
+                                (gameMode === GameMode.ONLINE_MULTIPLAYER && duelType === DuelType.WORM_VS_WORM);
+
+      if (isWormVsWormLocal) {
+        // Allow player 2 to control worm2 with arrow keys
+        let w2dx = 0;
+        let w2dy = 0;
+        if (s.keys['arrowup']) w2dy = -1;
+        else if (s.keys['arrowdown']) w2dy = 1;
+        else if (s.keys['arrowleft']) w2dx = -1;
+        else if (s.keys['arrowright']) w2dx = 1;
+
+        if (w2dx !== 0 || w2dy !== 0) {
+          let nextDir2 = s.worm2.direction;
+          if (w2dx === 1) nextDir2 = 'RIGHT';
+          if (w2dx === -1) nextDir2 = 'LEFT';
+          if (w2dy === 1) nextDir2 = 'DOWN';
+          if (w2dy === -1) nextDir2 = 'UP';
+
+          if (!isOpposite(nextDir2, s.worm2.direction)) {
+            s.worm2.targetDirection = nextDir2;
+          }
+        }
+        s.worm2.direction = s.worm2.targetDirection;
+
+        // Step slither for worm2 (uses same speedTicks pacing)
+        const head2 = s.worm2.segments[0];
+        let newHeadX2 = head2.x;
+        let newHeadY2 = head2.y;
+
+        if (s.worm2.direction === 'UP') newHeadY2--;
+        if (s.worm2.direction === 'DOWN') newHeadY2++;
+        if (s.worm2.direction === 'LEFT') newHeadX2--;
+        if (s.worm2.direction === 'RIGHT') newHeadX2++;
+
+        // Wraparound
+        if (newHeadX2 < 0) newHeadX2 = COLS - 1;
+        if (newHeadX2 >= COLS) newHeadX2 = 0;
+        if (newHeadY2 < 0) newHeadY2 = ROWS - 1;
+        if (newHeadY2 >= ROWS) newHeadY2 = 0;
+
+        // Rock collision check for worm2
+        if (!(isRock(newHeadX2, newHeadY2) && !s.worm2.diveActive)) {
+          const newSegments2 = [{ x: newHeadX2, y: newHeadY2 }, ...s.worm2.segments.slice(0, -1)];
+          s.worm2.segments = newSegments2;
+
+          addParticles(newHeadX2, newHeadY2, s.worm2.diveActive ? '#7c2d91' : '#9f7aea', s.worm2.diveActive ? 4 : 2);
+
+          // Consume spice for worm2
+          if (!s.worm2.diveActive) {
+            const itemIdx2 = s.spiceBlows.findIndex(sb => sb.x === newHeadX2 && sb.y === newHeadY2);
+            if (itemIdx2 !== -1) {
+              const gathered2 = s.spiceBlows[itemIdx2];
+              s.spiceBlows.splice(itemIdx2, 1);
+              spawnSpiceBlow(Math.random() > 0.85);
+
+              s.worm2.segments.push({ ...s.worm2.segments[s.worm2.segments.length - 1] });
+              addParticles(newHeadX2, newHeadY2, '#f59e0b', 14);
+
+              if (typeof s.worm2.spiceEaten === 'number') {
+                s.worm2.spiceEaten += gathered2.amount;
+              } else {
+                s.worm2.spiceEaten = gathered2.amount;
+              }
+            }
+          }
+        } else {
+          // Penalty for hitting rock on worm2 (chop tail)
+          if (s.worm2.segments.length > 5 && !s.worm2.diveActive) {
+            const removed2 = s.worm2.segments.pop();
+            if (removed2) addParticles(removed2.x, removed2.y, '#a855f7', 10);
           }
         }
       }
@@ -1325,6 +1424,8 @@ export default function GameCanvas({
             s.worm.segments.push({ ...s.worm.segments[s.worm.segments.length - 1] });
             s.score += 100;
             onSetScore(s.score);
+            // Bonus spice for eating a Fremen
+            s.worm.spiceEaten = (s.worm.spiceEaten || 0) + 3;
             return false; // Remove AI Fremen
           }
 
@@ -1333,6 +1434,8 @@ export default function GameCanvas({
             audioController.playWormRoar();
             addParticles(af.x, af.y, '#a855f7', 30);
             s.worm2.segments.push({ ...s.worm2.segments[s.worm2.segments.length - 1] });
+            // Bonus spice for eating a Fremen
+            s.worm2.spiceEaten = (s.worm2.spiceEaten || 0) + 3;
             return false; // Remove AI Fremen
           }
 
@@ -1705,7 +1808,7 @@ export default function GameCanvas({
       }
 
       // E. DRAW AI FREMENS
-      if (gameMode === GameMode.WORM_SOLO) {
+      if (gameMode === GameMode.WORM_SOLO || isWormVsWormMatch) {
         s.aiFremens.forEach(af => {
           const fx = af.x * CELL_SIZE + CELL_SIZE / 2;
           const fy = af.y * CELL_SIZE + CELL_SIZE / 2;
@@ -1836,10 +1939,7 @@ export default function GameCanvas({
       });
 
       // F2. DRAW SECOND SHAI-HULUD (PURPLE WORM FOR WORM RACES)
-      const isWormVsWorm = (gameMode === GameMode.LOCAL_VS && duelType === DuelType.WORM_VS_WORM) ||
-                           (gameMode === GameMode.ONLINE_MULTIPLAYER && duelType === DuelType.WORM_VS_WORM);
-
-      if (isWormVsWorm) {
+      if (isWormVsWormMatch) {
         const wormColor2 = '#a855f7'; // Purple colors
         const secondaryColor2 = '#6b21a8';
 
@@ -1921,6 +2021,41 @@ export default function GameCanvas({
         ctx.fillText(`WAN: Room ${multiplayerRoomId} | Role: ${multiplayerRole === 'fremen' ? 'FREMEN' : 'WORM'}`, CANVAS_WIDTH - 15, CANVAS_HEIGHT - 12);
       }
 
+      // Worm-vs-Worm spice meters, shown during play and at match end
+      if (isWormVsWormMatch) {
+        const worm1Spice = s.worm.spiceEaten || 0;
+        const worm2Spice = s.worm2.spiceEaten || 0;
+        const maxSpice = Math.max(worm1Spice, worm2Spice, 1);
+        const panelX = 16;
+        const panelY = 44;
+        const panelW = 220;
+        const panelH = 42;
+
+        ctx.fillStyle = 'rgba(12, 10, 9, 0.82)';
+        ctx.fillRect(panelX, panelY, panelW, panelH);
+        ctx.strokeStyle = '#78350f';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(panelX, panelY, panelW, panelH);
+
+        ctx.fillStyle = '#f97316';
+        ctx.font = 'bold 9px monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText('WORM SPICE', panelX + 10, panelY + 12);
+
+        const drawBar = (label: string, value: number, color: string, y: number) => {
+          ctx.fillStyle = '#44403c';
+          ctx.fillRect(panelX + 10, y, 180, 8);
+          ctx.fillStyle = color;
+          ctx.fillRect(panelX + 10, y, Math.max(2, (value / maxSpice) * 180), 8);
+          ctx.fillStyle = '#e7e5e4';
+          ctx.font = 'bold 7px monospace';
+          ctx.fillText(`${label}: ${value} spice`, panelX + 194, y + 7);
+        };
+
+        drawBar('ORANGE', worm1Spice, '#f97316', panelY + 18);
+        drawBar('PURPLE', worm2Spice, '#a855f7', panelY + 30);
+      }
+
       // Base translation restore
       ctx.restore();
     };
@@ -1952,8 +2087,62 @@ export default function GameCanvas({
         </div>
       )}
 
+      {/* Worm-vs-Worm result overlay */}
+      {isWormVsWormMatch && (gameState === GameState.GAME_OVER_WORM_WON || gameState === GameState.GAME_OVER_FREMEN_WON) && (
+        <div className="absolute inset-0 bg-stone-950/92 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center text-center p-6 animate-fade-in animate-duration-500" id="worm-duel-overlay">
+          <div className="flex flex-col items-center max-w-md gap-4">
+            <div className="w-20 h-20 rounded-full bg-amber-950/40 border border-amber-500/50 flex items-center justify-center shadow-lg shadow-amber-500/10">
+              <Swords className={`w-10 h-10 ${gameState === GameState.GAME_OVER_WORM_WON ? 'text-orange-500' : 'text-purple-400'}`} />
+            </div>
+            <div>
+              <h3 className="text-3xl font-sans tracking-widest text-amber-400 font-bold uppercase">WORM DUEL RESULT</h3>
+              <p className="text-xs text-stone-400 font-mono tracking-widest mt-1 uppercase">MOST SPICE COLLECTED WINS</p>
+            </div>
+
+            <div className="bg-stone-900 border border-stone-850 p-3 rounded text-sm font-mono w-full text-left">
+              <div className="flex justify-between border-b border-stone-850 pb-1 w-full text-xs text-stone-500">
+                <span>Orange Worm</span>
+                <span className="text-orange-400 font-bold">{stateRef.current.worm.spiceEaten || 0} spice</span>
+              </div>
+              <div className="flex justify-between pt-1 w-full text-xs text-stone-500">
+                <span>Purple Worm</span>
+                <span className="text-purple-400 font-bold">{stateRef.current.worm2.spiceEaten || 0} spice</span>
+              </div>
+            </div>
+
+            <p className="text-xs text-stone-400 px-6 leading-relaxed">
+              {(stateRef.current.worm.spiceEaten || 0) >= (stateRef.current.worm2.spiceEaten || 0)
+                ? 'Orange Worm collected the most spice before the clock expired.'
+                : 'Purple Worm collected the most spice before the clock expired.'}
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-3 w-full justify-center">
+              <button
+                onClick={() => {
+                  initLevel();
+                  onSetGameState(GameState.PLAYING);
+                }}
+                className="px-6 py-2.5 bg-gradient-to-r from-amber-700 to-amber-600 hover:from-amber-600 hover:to-amber-500 text-stone-900 border border-amber-400/50 font-bold rounded-lg text-sm flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95 shadow-md shadow-amber-500/10 flex-grow"
+                id="worm-duel-rematch-btn"
+              >
+                <RotateCcw className="w-4 h-4" />
+                Rematch
+              </button>
+
+              <button
+                onClick={() => onResetGame?.()}
+                className="px-6 py-2.5 bg-stone-900 hover:bg-stone-800 text-stone-300 border border-stone-800 font-bold rounded-lg text-sm flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95 shadow-md flex-grow cursor-pointer"
+                id="back-to-menu-overlay-btn"
+              >
+                Return to Menu
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* GAME OVER (Worm Eat Fremen) screen overlay */}
-      {gameState === GameState.GAME_OVER_WORM_WON && (
+      {!isWormVsWormMatch && gameState === GameState.GAME_OVER_WORM_WON && (
         <div className="absolute inset-0 bg-stone-950/92 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center text-center p-6 animate-fade-in animate-duration-500" id="worm-won-overlay">
           <div className="flex flex-col items-center max-w-md gap-4">
             <div className="w-20 h-20 rounded-full bg-red-950/40 border border-red-500/50 flex items-center justify-center shadow-lg shadow-red-500/10">
@@ -2010,7 +2199,7 @@ export default function GameCanvas({
       )}
 
       {/* GAME OVER (Fremen Harvest Escape) screen overlay */}
-      {gameState === GameState.GAME_OVER_FREMEN_WON && (
+      {!isWormVsWormMatch && gameState === GameState.GAME_OVER_FREMEN_WON && (
         <div className="absolute inset-0 bg-stone-950/92 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center text-center p-6 animate-fade-in animate-duration-500" id="fremen-won-overlay">
           <div className="flex flex-col items-center max-w-md gap-4 animate-scale-up">
             <div className="w-20 h-20 rounded-full bg-amber-950/40 border border-amber-500/50 flex items-center justify-center shadow-lg shadow-amber-500/10 animate-pulse">

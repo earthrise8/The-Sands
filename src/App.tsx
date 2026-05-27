@@ -42,6 +42,9 @@ export default function App() {
   const [multiplayerHomeBase, setMultiplayerHomeBase] = useState<Position | null>(null);
   const [multiplayerSpiceBlows, setMultiplayerSpiceBlows] = useState<SpiceBlow[]>([]);
   const [multiplayerRoomId, setMultiplayerRoomId] = useState<string>('');
+  const isWormVsWormMatch =
+    (gameMode === GameMode.LOCAL_VS && duelType === DuelType.WORM_VS_WORM) ||
+    (gameMode === GameMode.ONLINE_MULTIPLAYER && duelType === DuelType.WORM_VS_WORM);
 
   const handleSoundToggle = () => {
     const nextState = !isSoundOn;
@@ -151,10 +154,13 @@ export default function App() {
         {/* Responsive HUD Header Block */}
         <header className="relative z-20 h-20 flex items-center justify-between px-6 md:px-8 border-b border-orange-990/30 bg-black/40 backdrop-blur-md">
           <div className="flex items-center gap-3.5">
-            {/* Dune physical diamond rotation launcher icon */}
-            <div className="w-9 h-9 border border-amber-500/50 flex items-center justify-center rotate-45 bg-[#0c0a09] shadow-[0_0_10px_rgba(245,158,11,0.1)]">
-              <div className="w-5 h-5 bg-amber-600 -rotate-45 flex items-center justify-center">
-                <Compass className="w-3 h-3 text-[#0c0a09] animate-spin-slow" />
+            {/* Minimalist Dune triangle inside diamond frame */}
+            <div className="w-9 h-9 border border-amber-500/50 flex items-center justify-center rotate-45 bg-[#0c0a09] shadow-[0_0_10px_rgba(245,158,11,0.1)]" aria-hidden="true">
+              <div className="w-5 h-5 -rotate-45 flex items-center justify-center">
+                {/* Orange triangle (minimal dune emblem) */}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4" aria-hidden="true" focusable="false">
+                  <polygon points="12,3 3,20 21,20" fill="#f59e0b" />
+                </svg>
               </div>
             </div>
             <div>
@@ -406,49 +412,50 @@ export default function App() {
             gameState === GameState.GAME_OVER_FREMEN_WON) && (
             <div className="flex flex-col lg:flex-row items-stretch justify-center gap-5 w-full animate-fade-in" id="active-battlefield">
               
-              {/* LEFT COLUMN: Shai-Hulud Sensory Feed Diagnostics */}
-              <div className="w-full lg:w-[220px] bg-stone-900/90 border border-orange-950/45 p-4 rounded-xl flex flex-col justify-between text-stone-300">
-                <div className="flex flex-col gap-3">
-                  <div className="flex items-center gap-2 border-b border-orange-950/40 pb-2">
-                    <Swords className="w-4 h-4 text-[#ea580c] animate-pulse" />
-                    <span className="text-xs uppercase font-extrabold tracking-widest font-mono text-[#ea580c]">Sensory Feed</span>
-                  </div>
-
-                  {/* Sandworm Energy Capacity */}
-                  <div className="bg-stone-950/55 p-2.5 rounded border border-orange-990/10">
-                    <span className="block text-[9px] uppercase font-mono tracking-wider text-stone-500">Worm Breached State</span>
-                    <span className={`text-xs font-bold font-mono ${diveActive ? 'text-orange-500' : 'text-amber-500'}`}>
-                      {diveActive ? '● SUBTERRANEAN' : '● ON THE SURFACE'}
-                    </span>
-                  </div>
-
-                  {/* Seismic ripples level tracker */}
-                  <div className="flex flex-col gap-1.5 bg-stone-950/30 p-2.5 rounded border border-stone-850">
-                    <span className="block text-[9px] uppercase font-mono tracking-wider text-stone-400">DESERT HUM DISTURBANCE</span>
-                    <div className="flex gap-[2px] items-center h-5">
-                      <div className={`w-2 rounded-sm ${noiseLevel > 10 ? 'bg-cyan-500/80 h-2' : 'bg-stone-800 h-1'}`} />
-                      <div className={`w-2 rounded-sm ${noiseLevel > 25 ? 'bg-cyan-500/80 h-3' : 'bg-stone-800 h-1'}`} />
-                      <div className={`w-2 rounded-sm ${noiseLevel > 40 ? 'bg-amber-500/80 h-4' : 'bg-stone-800 h-1'}`} />
-                      <div className={`w-2 rounded-sm ${noiseLevel > 55 ? 'bg-amber-500/80 h-5' : 'bg-stone-800 h-1'}`} />
-                      <div className={`w-2 rounded-sm ${noiseLevel > 70 ? 'bg-red-500 h-5 animate-pulse' : 'bg-stone-800 h-1'}`} />
+              {!isWormVsWormMatch && (
+                <div className="w-full lg:w-[220px] bg-stone-900/90 border border-orange-950/45 p-4 rounded-xl flex flex-col justify-between text-stone-300">
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center gap-2 border-b border-orange-950/40 pb-2">
+                      <Swords className="w-4 h-4 text-[#ea580c] animate-pulse" />
+                      <span className="text-xs uppercase font-extrabold tracking-widest font-mono text-[#ea580c]">Sensory Feed</span>
                     </div>
-                    <span className="text-[10px] text-stone-500 font-mono">Stealth walks damp noise.</span>
+
+                    {/* Sandworm Energy Capacity */}
+                    <div className="bg-stone-950/55 p-2.5 rounded border border-orange-990/10">
+                      <span className="block text-[9px] uppercase font-mono tracking-wider text-stone-500">Worm Breached State</span>
+                      <span className={`text-xs font-bold font-mono ${diveActive ? 'text-orange-500' : 'text-amber-500'}`}>
+                        {diveActive ? '● SUBTERRANEAN' : '● ON THE SURFACE'}
+                      </span>
+                    </div>
+
+                    {/* Seismic ripples level tracker */}
+                    <div className="flex flex-col gap-1.5 bg-stone-950/30 p-2.5 rounded border border-stone-850">
+                      <span className="block text-[9px] uppercase font-mono tracking-wider text-stone-400">DESERT HUM DISTURBANCE</span>
+                      <div className="flex gap-[2px] items-center h-5">
+                        <div className={`w-2 rounded-sm ${noiseLevel > 10 ? 'bg-cyan-500/80 h-2' : 'bg-stone-800 h-1'}`} />
+                        <div className={`w-2 rounded-sm ${noiseLevel > 25 ? 'bg-cyan-500/80 h-3' : 'bg-stone-800 h-1'}`} />
+                        <div className={`w-2 rounded-sm ${noiseLevel > 40 ? 'bg-amber-500/80 h-4' : 'bg-stone-800 h-1'}`} />
+                        <div className={`w-2 rounded-sm ${noiseLevel > 55 ? 'bg-amber-500/80 h-5' : 'bg-stone-800 h-1'}`} />
+                        <div className={`w-2 rounded-sm ${noiseLevel > 70 ? 'bg-red-500 h-5 animate-pulse' : 'bg-stone-800 h-1'}`} />
+                      </div>
+                      <span className="text-[10px] text-stone-500 font-mono">Stealth walks damp noise.</span>
+                    </div>
+
+                    {/* Shai-hulud body metric */}
+                    <div className="bg-stone-950/30 p-2.5 rounded border border-stone-850 text-xs flex flex-col gap-1 font-mono">
+                      <span className="text-stone-500 text-[9px]">DIAGNOSTIC BLOCK:</span>
+                      <div>• Sector: <span className="text-stone-300">Tabr Sector 4B</span></div>
+                      <div>• Subsurface: <span className="text-stone-300">{diveEnergy}% Reserves</span></div>
+                    </div>
                   </div>
 
-                  {/* Shai-hulud body metric */}
-                  <div className="bg-stone-950/30 p-2.5 rounded border border-stone-850 text-xs flex flex-col gap-1 font-mono">
-                    <span className="text-stone-500 text-[9px]">DIAGNOSTIC BLOCK:</span>
-                    <div>• Sector: <span className="text-stone-300">Tabr Sector 4B</span></div>
-                    <div>• Subsurface: <span className="text-stone-300">{diveEnergy}% Reserves</span></div>
+                  {/* Aesthetic Quote block fitted elegantly into bottom of Left Column */}
+                  <div className="mt-4 pt-3 border-t border-orange-950/25 bg-amber-950/10 p-2 rounded text-justify">
+                    <p className="text-amber-500/85 font-mono text-[9px] uppercase tracking-widest font-bold mb-1">ARRAKAN PROVERB:</p>
+                    <p className="text-[10px] text-stone-400 italic">"He who controls the spice controls the universe."</p>
                   </div>
                 </div>
-
-                {/* Aesthetic Quote block fitted elegantly into bottom of Left Column */}
-                <div className="mt-4 pt-3 border-t border-orange-950/25 bg-amber-950/10 p-2 rounded text-justify">
-                  <p className="text-amber-500/85 font-mono text-[9px] uppercase tracking-widest font-bold mb-1">ARRAKAN PROVERB:</p>
-                  <p className="text-[10px] text-stone-400 italic">"He who controls the spice controls the universe."</p>
-                </div>
-              </div>
+              )}
 
               {/* CENTER COLUMN: Core map canvas area */}
               <div className="flex-1 flex flex-col items-center">

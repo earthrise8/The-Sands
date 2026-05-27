@@ -63,6 +63,8 @@ export default function GameControls({
   onSetGameState
 }: GameControlsProps) {
   const [quoteIndex, setQuoteIndex] = useState(0);
+  const isWormVsWormMatch = (gameMode === GameMode.LOCAL_VS && duelType === DuelType.WORM_VS_WORM) ||
+                            (gameMode === GameMode.ONLINE_MULTIPLAYER && duelType === DuelType.WORM_VS_WORM);
 
   useEffect(() => {
     // Cycle quotes every 25 seconds
@@ -179,7 +181,7 @@ export default function GameControls({
           </div>
 
           {/* Active Mode Specific Indicators */}
-          {(gameMode === GameMode.FREMEN_SOLO || gameMode === GameMode.LOCAL_VS) && (
+          {(gameMode === GameMode.FREMEN_SOLO || (gameMode === GameMode.LOCAL_VS && !isWormVsWormMatch)) && (
             <div className="flex flex-col gap-2.5">
               <h3 className="text-[10px] uppercase font-bold tracking-widest text-cyan-400 font-mono border-l border-cyan-400 pl-1.5">Fremen Harvester</h3>
               
