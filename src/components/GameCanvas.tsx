@@ -354,7 +354,10 @@ export default function GameCanvas({
   
       // Reset AI Fremens
       s.aiFremens = [];
-      if (gameMode === GameMode.WORM_SOLO || (gameMode === GameMode.LOCAL_VS && duelType === DuelType.WORM_VS_WORM)) {
+      if (
+        gameMode === GameMode.WORM_SOLO ||
+        ((gameMode === GameMode.LOCAL_VS || gameMode === GameMode.ONLINE_MULTIPLAYER) && duelType === DuelType.WORM_VS_WORM)
+      ) {
         // Spawn 3 AI harvesters
         for (let i = 0; i < 3; i++) {
           spawnAIFremen(i);
@@ -438,35 +441,52 @@ export default function GameCanvas({
       if (s.gameState !== GameState.PLAYING) return;
 
       // Intercept key events to prevent scrolling the AI studio iframe
-      if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ', 'w', 'a', 's', 'd', 'c', 'x', 'f'].includes(key)) {
+      if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ', 'q', 'w', 'a', 's', 'd', 'c', 'x', 'f'].includes(key)) {
         e.preventDefault();
       }
 
-      // Drop Thumper (Fremen Option)
-      if (e.key === ' ' && (gameMode === GameMode.FREMEN_SOLO || gameMode === GameMode.LOCAL_VS || (gameMode === GameMode.ONLINE_MULTIPLAYER && multiplayerRole === 'fremen'))) {
-        if (s.fremen.thumpersLeft > 0 && !s.fremen.isRiding) {
-          s.fremen.thumpersLeft--;
-          onSetThumpersLeft(s.fremen.thumpersLeft);
+      const isFremenVsFremen = (gameMode === GameMode.LOCAL_VS && duelType === DuelType.FREMEN_VS_FREMEN) ||
+                               (gameMode === GameMode.ONLINE_MULTIPLAYER && duelType === DuelType.FREMEN_VS_FREMEN);
+
+      const deployThumper = (fremen: typeof s.fremen, syncToPeer: boolean) => {
+        if (fremen.thumpersLeft > 0 && !fremen.isRiding) {
+          fremen.thumpersLeft--;
+          // Keep legacy single value synced to Fremen 1 outside dual-fremen mode
+          if (!isFremenVsFremen || fremen === s.fremen) {
+            onSetThumpersLeft(fremen.thumpersLeft);
+          }
           s.thumpers.push({
-            x: s.fremen.x,
-            y: s.fremen.y,
+            x: fremen.x,
+            y: fremen.y,
             life: 220,
             pulseRadius: 0
           });
           audioController.playThump(1.2);
-          addParticles(s.fremen.x, s.fremen.y, '#d97706', 12);
+          addParticles(fremen.x, fremen.y, '#d97706', 12);
 
-          // Forward Thumper signal to peer
-          if (gameMode === GameMode.ONLINE_MULTIPLAYER && multiplayerSocket && multiplayerSocket.readyState === WebSocket.OPEN) {
+          if (syncToPeer && gameMode === GameMode.ONLINE_MULTIPLAYER && multiplayerSocket && multiplayerSocket.readyState === WebSocket.OPEN) {
             multiplayerSocket.send(JSON.stringify({
               type: 'THUMPER_SIGNAL',
               payload: {
-                x: s.fremen.x,
-                y: s.fremen.y
+                x: fremen.x,
+                y: fremen.y
               }
             }));
           }
         }
+      };
+
+      // Drop Thumper controls
+      // Fremen-vs-Fremen: WASD player uses Q, Arrow player uses Space.
+      if (isFremenVsFremen) {
+        if (key === 'q' && s.fremen.lives > 0) {
+          deployThumper(s.fremen, false);
+        }
+        if (e.key === ' ' && s.fremen2.lives > 0) {
+          deployThumper(s.fremen2, false);
+        }
+      } else if (e.key === ' ' && (gameMode === GameMode.FREMEN_SOLO || gameMode === GameMode.LOCAL_VS || (gameMode === GameMode.ONLINE_MULTIPLAYER && multiplayerRole === 'fremen'))) {
+        deployThumper(s.fremen, true);
       }
 
 
@@ -734,7 +754,10 @@ export default function GameCanvas({
       updatePlayerFremen();
 
       // 8. HANDLE AI FREMENS (For Worm Solo and Worm-vs-Worm race modes)
-      if (gameMode === GameMode.WORM_SOLO || (gameMode === GameMode.LOCAL_VS && duelType === DuelType.WORM_VS_WORM)) {
+      if (
+        gameMode === GameMode.WORM_SOLO ||
+        ((gameMode === GameMode.LOCAL_VS || gameMode === GameMode.ONLINE_MULTIPLAYER) && duelType === DuelType.WORM_VS_WORM)
+      ) {
         updateAIFremens();
       }
 
@@ -794,6 +817,194 @@ export default function GameCanvas({
 
       if (gameMode === GameMode.WORM_SOLO) return; // Fremen is AI in block-hunt mode
       if (gameMode === GameMode.ONLINE_MULTIPLAYER && multiplayerRole === 'worm') return; // Peer controls Fremen
+
+      const isFremenVsFremen = (gameMode === GameMode.LOCAL_VS && duelType === DuelType.FREMEN_VS_FREMEN) ||
+                               (gameMode === GameMode.ONLINE_MULTIPLAYER && duelType === DuelType.FREMEN_VS_FREMEN);
+
+      const getDirectionFromKeys = (
+        upKey: string,
+        downKey: string,
+        leftKey: string,
+        rightKey: string
+      ) => {
+        let dx = 0;
+        let dy = 0;
+
+        if (s.keys[upKey]) dy = -1;
+        else if (s.keys[downKey]) dy = 1;
+        else if (s.keys[leftKey]) dx = -1;
+        else if (s.keys[rightKey]) dx = 1;
+
+        return { dx, dy };
+      };
+
+      const moveFremen = (
+        fremen: typeof s.fremen,
+        controls: { up: string; down: string; left: string; right: string },
+        label: 'fremen' | 'fremen2'
+      ) => {
+        if (fremen.lives <= 0) {
+          return;
+        }
+        let { dx, dy } = getDirectionFromKeys(controls.up, controls.down, controls.left, controls.right);
+
+        if (label === 'fremen' || isFremenVsFremen) {
+          if (dx !== 0 || dy !== 0) {
+            fremen.noiseLevel = Math.min(100, fremen.noiseLevel + 3);
+          } else {
+            fremen.noiseLevel = Math.max(0, fremen.noiseLevel - 1.5);
+          }
+          if (label === 'fremen') {
+            onSetNoiseLevel(Math.floor(fremen.noiseLevel));
+          }
+        }
+
+        if (fremen.isRiding) {
+          const segIndex = fremen.rideSegmentIndex;
+          if (segIndex < s.worm.segments.length) {
+            const seg = s.worm.segments[segIndex];
+            fremen.x = seg.x;
+            fremen.y = seg.y;
+            fremen.targetX = seg.x;
+            fremen.targetY = seg.y;
+
+            if (dx !== 0 || dy !== 0) {
+              let nextDir = s.worm.direction;
+              if (dx === 1) nextDir = 'RIGHT';
+              if (dx === -1) nextDir = 'LEFT';
+              if (dy === 1) nextDir = 'DOWN';
+              if (dy === -1) nextDir = 'UP';
+
+              if (
+                (nextDir === 'LEFT' && s.worm.direction !== 'RIGHT') ||
+                (nextDir === 'RIGHT' && s.worm.direction !== 'LEFT') ||
+                (nextDir === 'UP' && s.worm.direction !== 'DOWN') ||
+                (nextDir === 'DOWN' && s.worm.direction !== 'UP')
+              ) {
+                s.worm.targetDirection = nextDir;
+              }
+            }
+
+            if (s.worm.diveActive || s.timeStep % 500 === 0) {
+              fremen.isRiding = false;
+              addParticles(fremen.x, fremen.y, '#ea580c', 16);
+              onSetScore(prev => prev + 50);
+            }
+          } else {
+            fremen.isRiding = false;
+          }
+          return;
+        }
+
+        if (fremen.stepCooldown > 0) {
+          fremen.stepCooldown--;
+        }
+
+        if (fremen.stepCooldown === 0 && (dx !== 0 || dy !== 0)) {
+          const nextX = fremen.x + dx;
+          const nextY = fremen.y + dy;
+
+          if (nextX >= 0 && nextX < COLS && nextY >= 0 && nextY < ROWS) {
+            fremen.x = nextX;
+            fremen.y = nextY;
+            fremen.targetX = nextX;
+            fremen.targetY = nextY;
+
+            const isRocky = isRock(nextX, nextY);
+            fremen.stepCooldown = isRocky ? 12 : 6;
+
+            if (!isRocky) {
+              addParticles(nextX, nextY, '#d97706', 2);
+            }
+
+            const itemIdx = s.spiceBlows.findIndex(sb => sb.x === nextX && sb.y === nextY);
+            if (itemIdx !== -1) {
+              const gatheredSpice = s.spiceBlows[itemIdx];
+              fremen.spiceCarried += gatheredSpice.amount;
+              s.spiceBlows.splice(itemIdx, 1);
+
+              audioController.playSpiceHarvest();
+              addParticles(nextX, nextY, '#f59e0b', 12);
+
+              if (gameMode === GameMode.ONLINE_MULTIPLAYER && multiplayerSocket && multiplayerSocket.readyState === WebSocket.OPEN) {
+                multiplayerSocket.send(JSON.stringify({
+                  type: 'SPICE_GATHERED',
+                  payload: {
+                    id: gatheredSpice.id,
+                    fremenCoins: fremen.spiceCarried
+                  }
+                }));
+              } else if (label === 'fremen') {
+                s.score += gatheredSpice.amount * 10;
+                onSetScore(s.score);
+                spawnSpiceBlow(Math.random() > 0.82);
+              }
+            }
+
+            if (s.homeBase && nextX === s.homeBase.x && nextY === s.homeBase.y) {
+              if (fremen.spiceCarried > 0) {
+                const depAmount = fremen.spiceCarried;
+                fremen.spiceDeposited += depAmount;
+                fremen.spiceCarried = 0;
+
+                if (label === 'fremen') {
+                  onSetSpiceCoins(fremen.spiceDeposited);
+
+                  const depositBonus = depAmount * 15;
+                  s.score += depositBonus;
+                  onSetScore(s.score);
+                }
+
+                audioController.playVictory();
+                addParticles(s.homeBase.x, s.homeBase.y, '#10b981', 16);
+
+                if (label === 'fremen' && gameMode === GameMode.ONLINE_MULTIPLAYER && multiplayerSocket && multiplayerSocket.readyState === WebSocket.OPEN) {
+                  multiplayerSocket.send(JSON.stringify({
+                    type: 'GAME_FORWARD',
+                    payload: {
+                      role: 'fremen',
+                      data: {
+                        x: fremen.x,
+                        y: fremen.y,
+                        targetX: fremen.targetX,
+                        targetY: fremen.targetY,
+                        noiseLevel: fremen.noiseLevel,
+                        spiceCarried: 0,
+                        spiceDeposited: fremen.spiceDeposited,
+                        thumpersLeft: fremen.thumpersLeft,
+                        isRiding: fremen.isRiding,
+                        score: s.score,
+                        direction: fremen.direction
+                      }
+                    }
+                  }));
+                }
+
+                if (label === 'fremen' && fremen.spiceDeposited >= spiceGoal) {
+                  audioController.playVictory();
+                  onUpdateHighScore(s.score + 500);
+                  onSetGameState(GameState.GAME_OVER_FREMEN_WON);
+
+                  if (gameMode === GameMode.ONLINE_MULTIPLAYER && multiplayerSocket && multiplayerSocket.readyState === WebSocket.OPEN) {
+                    multiplayerSocket.send(JSON.stringify({
+                      type: 'MATCH_OVER',
+                      payload: {
+                        winner: 'fremen'
+                      }
+                    }));
+                  }
+                }
+              }
+            }
+          }
+        }
+      };
+
+      if (isFremenVsFremen) {
+        moveFremen(s.fremen, { up: 'w', down: 's', left: 'a', right: 'd' }, 'fremen');
+        moveFremen(s.fremen2, { up: 'arrowup', down: 'arrowdown', left: 'arrowleft', right: 'arrowright' }, 'fremen2');
+        return;
+      }
 
       // Check keyboard directions
       let dx = 0;
@@ -1054,17 +1265,33 @@ export default function GameCanvas({
         const head = s.worm.segments[0];
         
         // Target 1: Active thumper
-        // Target 2: Shield noise
-        // Target 3: Loud fremen
+        // Target 2: Noisiest alive Fremen (in Fremen-vs-Fremen)
+        // Target 3: Loud Fremen
         // Target 4: Clumped spice blow
         let targetX = s.fremen.x;
         let targetY = s.fremen.y;
         let hasSpecTarget = false;
+        const isFremenVsFremen = (gameMode === GameMode.LOCAL_VS && duelType === DuelType.FREMEN_VS_FREMEN) ||
+                                 (gameMode === GameMode.ONLINE_MULTIPLAYER && duelType === DuelType.FREMEN_VS_FREMEN);
 
         if (s.thumpers.length > 0) {
           targetX = s.thumpers[0].x;
           targetY = s.thumpers[0].y;
           hasSpecTarget = true;
+        } else if (isFremenVsFremen) {
+          const candidates = [s.fremen, s.fremen2].filter(f => f.lives > 0);
+          if (candidates.length > 0) {
+            const chosen = candidates.reduce((best, cur) => {
+              if (cur.noiseLevel > best.noiseLevel) return cur;
+              if (cur.noiseLevel < best.noiseLevel) return best;
+              const distBest = Math.abs(head.x - best.x) + Math.abs(head.y - best.y);
+              const distCur = Math.abs(head.x - cur.x) + Math.abs(head.y - cur.y);
+              return distCur < distBest ? cur : best;
+            });
+            targetX = chosen.x;
+            targetY = chosen.y;
+            hasSpecTarget = true;
+          }
         } else if (s.fremen.noiseLevel > 40 && !s.fremen.isRiding) {
           targetX = s.fremen.x;
           targetY = s.fremen.y;
@@ -1324,6 +1551,15 @@ export default function GameCanvas({
                            (gameMode === GameMode.ONLINE_MULTIPLAYER && duelType === DuelType.WORM_VS_WORM);
 
       if (isFremenVsFremen) {
+        const finishFremenVsFremen = () => {
+          audioController.playDeath();
+          if (s.fremen.spiceDeposited >= s.fremen2.spiceDeposited) {
+            onSetGameState(GameState.GAME_OVER_FREMEN_WON); // Fremen 1 (silver) wins ties
+          } else {
+            onSetGameState(GameState.GAME_OVER_WORM_WON); // Fremen 2 (gold) wins
+          }
+        };
+
         // Resolve collisions of BOTH Fremen P1 and P2 with the AI Worm
         // Fremen P1 check:
         if (!s.fremen.isRiding && !(s.fremen.invulnerableTime && s.fremen.invulnerableTime > 0)) {
@@ -1347,13 +1583,10 @@ export default function GameCanvas({
             s.fremen.stepCooldown = 35; // Respawn stun
             s.fremen.invulnerableTime = 90; // 1.5 seconds invincere
             if (s.fremen.lives <= 0) {
-              audioController.playDeath();
-              // Compare results!
-              if (s.fremen.spiceDeposited >= s.fremen2.spiceDeposited) {
-                onSetGameState(GameState.GAME_OVER_FREMEN_WON); // Fremen 1 wins!
-              } else {
-                onSetGameState(GameState.GAME_OVER_WORM_WON); // Fremen 2 wins!
-              }
+              // Keep match running until timer or until BOTH Fremen are out of lives
+              s.fremen.invulnerableTime = 0;
+              s.fremen.x = -100;
+              s.fremen.y = -100;
             }
           }
         }
@@ -1379,15 +1612,16 @@ export default function GameCanvas({
             s.fremen2.stepCooldown = 35; // Respawn stun
             s.fremen2.invulnerableTime = 90; // 1.5 seconds invincere
             if (s.fremen2.lives <= 0) {
-              audioController.playDeath();
-              // Compare results!
-              if (s.fremen.spiceDeposited >= s.fremen2.spiceDeposited) {
-                onSetGameState(GameState.GAME_OVER_FREMEN_WON);
-              } else {
-                onSetGameState(GameState.GAME_OVER_WORM_WON);
-              }
+              // Keep match running until timer or until BOTH Fremen are out of lives
+              s.fremen2.invulnerableTime = 0;
+              s.fremen2.x = -100;
+              s.fremen2.y = -100;
             }
           }
+        }
+
+        if (s.fremen.lives <= 0 && s.fremen2.lives <= 0) {
+          finishFremenVsFremen();
         }
         return;
       }
@@ -2009,6 +2243,24 @@ export default function GameCanvas({
           ctx.fillStyle = '#10b981';
           ctx.fillText("⮞ SIETCH BASE", 102, 28);
         }
+      }
+
+      // Fremen-vs-Fremen: show separate thumper counts for both players
+      const isFremenVsFremen = (gameMode === GameMode.LOCAL_VS && duelType === DuelType.FREMEN_VS_FREMEN) ||
+                               (gameMode === GameMode.ONLINE_MULTIPLAYER && duelType === DuelType.FREMEN_VS_FREMEN);
+      if (isFremenVsFremen) {
+        ctx.fillStyle = 'rgba(12, 10, 9, 0.85)';
+        ctx.fillRect(CANVAS_WIDTH - 214, 12, 202, 40);
+        ctx.strokeStyle = '#57534e';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(CANVAS_WIDTH - 214, 12, 202, 40);
+
+        ctx.textAlign = 'left';
+        ctx.font = 'bold 9px monospace';
+        ctx.fillStyle = '#d6d3d1';
+        ctx.fillText(`SILVER (WASD/Q) THUMPERS: ${Math.max(0, s.fremen.thumpersLeft)}`, CANVAS_WIDTH - 206, 27);
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillText(`GOLD (ARROWS/SPACE) THUMPERS: ${Math.max(0, s.fremen2.thumpersLeft)}`, CANVAS_WIDTH - 206, 43);
       }
 
       // Live Session HUD watermark in the lower corner of the tactical battlefield

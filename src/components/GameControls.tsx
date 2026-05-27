@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { GameMode, GameState, DuelType } from '../types';
-import { Volume2, VolumeX, Shield, Disc, ArrowUp, Zap, HelpCircle, EyeOff, User, Compass } from 'lucide-react';
+import { Volume2, VolumeX, Shield, Disc, Zap, HelpCircle, EyeOff, User, Compass } from 'lucide-react';
 import { audioController } from '../utils/AudioController';
 
 interface GameControlsProps {
@@ -31,15 +31,6 @@ interface GameControlsProps {
   onSetGameState: (state: GameState) => void;
 }
 
-const DUNE_QUOTES = [
-  { text: "Fear is the mind-killer. Fear is the little-death that brings total obliteration.", author: "Bene Gesserit Litany" },
-  { text: "He who controls the spice controls the universe.", author: "Baron Harkonnen" },
-  { text: "A stone is heavy and the sand is weighty; but a fool's wrath is heavier than them both.", author: "Arrakis Proverbs" },
-  { text: "Bless the Maker and His water. Bless the coming and going of Him.", author: "Fremen Blessing" },
-  { text: "The mystery of life isn't a problem to solve, but a reality to experience.", author: "Reverend Mother Gaius Helen Mohiam" },
-  { text: "Arrakis teaches the attitude of the knife - chopping off what's incomplete and saying: 'Now, it's complete.'", author: "Princess Irulan" }
-];
-
 export default function GameControls({
   score,
   highScore,
@@ -62,25 +53,14 @@ export default function GameControls({
   onTogglePause,
   onSetGameState
 }: GameControlsProps) {
-  const [quoteIndex, setQuoteIndex] = useState(0);
   const isWormVsWormMatch = (gameMode === GameMode.LOCAL_VS && duelType === DuelType.WORM_VS_WORM) ||
                             (gameMode === GameMode.ONLINE_MULTIPLAYER && duelType === DuelType.WORM_VS_WORM);
-
-  useEffect(() => {
-    // Cycle quotes every 25 seconds
-    const interval = setInterval(() => {
-      setQuoteIndex((prev) => (prev + 1) % DUNE_QUOTES.length);
-    }, 25000);
-    return () => clearInterval(interval);
-  }, []);
 
   const handleSoundToggle = () => {
     const nextState = !isSoundOn;
     onSetSoundOn(nextState);
     audioController.toggleSound(nextState);
   };
-
-  const activeQuote = DUNE_QUOTES[quoteIndex];
 
   return (
     <div className="flex flex-col gap-4 w-full lg:w-[260px] bg-stone-900/90 border border-orange-950/45 p-4 rounded-xl shadow-2xl text-stone-200" id="tactical-panel">
@@ -212,24 +192,6 @@ export default function GameControls({
                 </div>
               </div>
 
-              {/* Noise meter */}
-              <div className="flex flex-col gap-1">
-                <div className="flex justify-between text-xs">
-                  <span className="text-stone-300 flex items-center gap-1">
-                    Walking Noise:
-                  </span>
-                  <span className={`font-mono text-xs font-semibold ${noiseLevel > 65 ? 'text-red-500 animate-pulse font-extrabold' : noiseLevel > 35 ? 'text-amber-500' : 'text-emerald-400'}`}>
-                    {noiseLevel > 65 ? 'RHYTHMIC CHARR' : noiseLevel > 35 ? 'Slight Rhythm' : 'Dune Stealth'}
-                  </span>
-                </div>
-                <div className="w-full h-2 bg-stone-950 rounded-full overflow-hidden border border-stone-850">
-                  <div 
-                    className={`h-full rounded-full transition-all duration-300 ${noiseLevel > 65 ? 'bg-red-500' : noiseLevel > 35 ? 'bg-amber-500' : 'bg-emerald-500'}`}
-                    style={{ width: `${noiseLevel}%` }}
-                  />
-                </div>
-              </div>
-
               {/* Thumpers */}
               <div className="flex justify-between items-center text-xs bg-stone-950/30 p-2 rounded border border-stone-850">
                 <span className="text-stone-400 flex items-center gap-1">
@@ -240,37 +202,7 @@ export default function GameControls({
                   {thumpersLeft} Left
                 </span>
               </div>
-            </div>
-          )}
 
-          {/* Sandworm Specific Indicators */}
-          {(gameMode === GameMode.WORM_SOLO || gameMode === GameMode.LOCAL_VS) && (
-            <div className="flex flex-col gap-2.5 mt-1 pt-1 border-t border-stone-800/40">
-              <h3 className="text-xs uppercase font-bold tracking-widest text-red-500 font-mono border-l-2 border-red-500 pl-2">Shai-Hulud (Worm)</h3>
-
-              {/* Underground Tunnel Capacity/Energy */}
-              <div className="flex flex-col gap-1.5 p-2 bg-stone-950/20 border border-stone-850 rounded">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="flex items-center gap-1 text-stone-400">
-                    <ArrowUp className={`w-3.5 h-3.5 rotate-180 ${diveActive ? 'text-orange-500 animate-bounce' : 'text-stone-500'}`} />
-                    Subsurface Dive:
-                  </span>
-                  <span className={`font-semibold font-mono text-[11px] ${diveActive ? 'text-orange-500 font-bold' : 'text-stone-500'}`}>
-                    {diveActive ? 'UNDERGROUND' : 'SURFACE'}
-                  </span>
-                </div>
-                <div className="w-full h-1.5 bg-stone-950 rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full transition-all duration-300 ${diveActive ? 'bg-orange-500' : 'bg-stone-800'}`}
-                    style={{ width: `${diveEnergy}%` }}
-                  />
-                </div>
-                <span className="text-[9px] text-stone-500 font-mono leading-relaxed mt-1">
-                  {diveActive 
-                    ? "Breaching onto Fremen causes a massive devouring radius!"
-                    : "Dive underneath to glide through boulders safely."}
-                </span>
-              </div>
             </div>
           )}
 
@@ -293,16 +225,6 @@ export default function GameControls({
           </div>
         </div>
       )}
-
-      {/* Decorative Custom Lore Quote Block */}
-      <div className="mt-auto bg-stone-950/35 border border-stone-850/60 p-3.5 rounded-lg flex flex-col gap-2">
-        <p className="text-stone-400 italic text-[11px] leading-relaxed text-justify">
-          "{activeQuote.text}"
-        </p>
-        <span className="text-[9px] text-amber-600/80 font-mono tracking-wider text-right uppercase">
-          — {activeQuote.author}
-        </span>
-      </div>
 
       {/* Embedded visual mini help panel */}
       {gameState === GameState.PLAYING && (
