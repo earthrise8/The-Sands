@@ -2463,7 +2463,7 @@ export default function GameCanvas({
             </div>
             
             <p className="text-xs text-stone-400 px-6 leading-relaxed">
-              Incredible navigation! You harvested the required {spiceGoal} kg of pure Melange Spice and successfully dodged the tremors of Shai-Hulud. Emperor Shaddam IV's tribute is satisfied.
+              Incredible navigation! You harvested the required {spiceGoal} kg of pure Melange Spice and successfully dodged the tremors of Shai-Hulud. The Guild's tribute is satisfied.
             </p>
 
             <div className="bg-stone-900 border border-stone-850 p-3 rounded text-sm font-mono w-full">
