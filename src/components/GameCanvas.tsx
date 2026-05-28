@@ -543,7 +543,7 @@ export default function GameCanvas({
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [gameMode]);
+  }, [gameMode, level, spiceGoal]);
 
   // Handle Online Multiplayer Live synchronizer packets
   useEffect(() => {
