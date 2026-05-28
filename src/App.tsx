@@ -60,7 +60,7 @@ export default function App() {
   };
 
   // Dynamically scale spice goal based on solar levels in Fremen Solo mode
-  const spiceGoal = gameMode === GameMode.FREMEN_SOLO ? (50 + (level - 1) * 20) : 50;
+  const spiceGoal = gameMode === GameMode.FREMEN_SOLO ? (20 + (level - 1) * 5) : 20;
 
   // Load High Score on initial mount
   useEffect(() => {
